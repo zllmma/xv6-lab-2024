@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "*.csv": "csv",
+        "*.py": "python",
+        "syscall.h": "c",
+        "user.h": "c",
+        "types.h": "c"
+    }
+}
