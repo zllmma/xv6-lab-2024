@@ -4,6 +4,9 @@
         "*.py": "python",
         "syscall.h": "c",
         "user.h": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "cstdio": "c",
+        "stdarg.h": "c",
+        "stat.h": "c"
     }
 }
