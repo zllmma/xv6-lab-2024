@@ -17,12 +17,14 @@ void primes(int* pl) {
     int pr[2];
     pipe(pr);
     if (fork() == 0) {
+        close(pl[0]);
+        close(pr[1]);
         primes(pr);
     } else {
         printf("prime %d\n", prime);
         close(pr[0]);
         int number;
-        while (read(pl[0], &number, sizeof(int) == sizeof(int))) {
+        while ( read(pl[0], &number, sizeof(int)) == sizeof(int) ) {
             if (number % prime != 0) {
                 write(pr[1], &number, sizeof(int));
             }
