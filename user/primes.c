@@ -10,15 +10,16 @@ void primes(int* pl) {
     int prime;
     int count = read(pl[0], &prime, sizeof(int));
     if (count != sizeof(int)) {
+        close(pl[0]);
         exit(0);
     }
-    printf("prime %d\n", prime);
 
     int pr[2];
     pipe(pr);
     if (fork() == 0) {
         primes(pr);
     } else {
+        printf("prime %d\n", prime);
         close(pr[0]);
         int number;
         while (read(pl[0], &number, sizeof(int) == sizeof(int))) {
