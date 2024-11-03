@@ -14,7 +14,7 @@ void copy(char **dest, char *src) {
     strcpy(*dest, src);
 }
 
-// 从标准输入读取一行到一个字符串数组，start 是起始索引，返回参数数量
+// 从标准输入读取一行到一个字符串数组，start 是起始索引，返回读取结束时索引
 int readline(char **paras, int start) {
     char buf[MAX_LEN];
     int i = 0;
