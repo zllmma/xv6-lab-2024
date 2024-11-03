@@ -8,6 +8,7 @@
         "cstdio": "c",
         "stdarg.h": "c",
         "stat.h": "c",
-        "limits": "c"
+        "limits": "c",
+        "param.h": "c"
     }
 }
