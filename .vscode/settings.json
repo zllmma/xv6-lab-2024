@@ -9,6 +9,7 @@
         "stdarg.h": "c",
         "stat.h": "c",
         "limits": "c",
-        "param.h": "c"
+        "param.h": "c",
+        "fcntl.h": "c"
     }
 }
