@@ -1,3 +1,6 @@
 usertrap
 7, that is a parameter of ecall, which repersents the exec() syscall
 usermode
+lw	a3,0(zero); a3
+address 0 is mapped to user text, so the kernel crashed
+initcode, 1
