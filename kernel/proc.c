@@ -615,6 +615,12 @@ kill(int pid)
   return -1;
 }
 
+int
+trace(int mask)
+{
+    return 0;
+}
+
 void
 setkilled(struct proc *p)
 {
