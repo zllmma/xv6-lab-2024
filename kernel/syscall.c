@@ -135,7 +135,6 @@ syscall(void)
 {
   int num;
   struct proc *p = myproc();
-  int trace_mask = p->trace_mask;
   char* syscall_name[22] = {"fork", "exit", "wait", "pipe", "read", "kill", "exec", "fstat", "chdir", "dup", "getpid", "sbrk", "sleep", "uptime", "open", "write", "mknod", "unlink", "link", "mkdir", "close", "trace"};
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
@@ -143,7 +142,7 @@ syscall(void)
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
     // Display trace
-    if (trace_mask >> num) {
+    if ( (1 << num) & p->trace_mask ) {
         printf("%d: syscall %s -> %ld\n", p->pid, syscall_name[num - 1], p->trapframe->a0);
     }
   } else {
