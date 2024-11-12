@@ -295,7 +295,8 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
-
+  // copy tracemask
+  np->trace_mask = p->trace_mask;
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
@@ -618,6 +619,10 @@ kill(int pid)
 int
 trace(int mask)
 {
+    if (mask < 0) {
+        return -1;
+    }
+    myproc()->trace_mask = mask;
     return 0;
 }
 

@@ -95,5 +95,7 @@ sys_uptime(void)
 uint64
 sys_trace(void)
 {
-    return 0;
+    int mask;
+    argint(0, &mask);
+    return trace(mask);
 }
