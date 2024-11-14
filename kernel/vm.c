@@ -488,9 +488,40 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 
 
 #ifdef LAB_PGTBL
+// recursively print all contents in pagetable from certain virutal address and level
+void print_pgtbl(pagetable_t pagetable, int level, uint64 va) {
+    if (level < 0) {
+        // DO NOT FORGET UPDATE VA!
+        va += (1 << (12 + level * 9));
+        return; 
+    }
+
+    // there are 2^9=512 PTEs in one page table 
+    for (int index = 0; index < 512; index++) {
+        pte_t pte = pagetable[index];
+
+        // do not print invalid PTEs
+        if ( !(pte & PTE_V) ) {
+            // DO NOT FORGET UPDATE VA!
+            va += (1 << (12 + level * 9));
+            continue; 
+        }
+        for (int j = 0; j < 3 - level; j++) { printf(" .."); }
+        uint64 child = PTE2PA(pte);
+        printf("%p: pte %p pa %p\n", (void *)va, (void *)pte, (void *)child);
+
+        // recursive call
+        print_pgtbl((pagetable_t)child, level - 1, va);
+
+        // DO NOT FORGET UPDATE VA!
+        va += (1 << (12 + level * 9));
+    }
+}
+
 void
 vmprint(pagetable_t pagetable) {
-  // your code here
+  printf("page table %p\n", pagetable);
+  print_pgtbl(pagetable, 2, 0x0);
 }
 #endif
 
