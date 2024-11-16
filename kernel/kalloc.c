@@ -80,3 +80,41 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+// alloc one 4MiByte super page of physical memory
+void *
+superalloc(void)
+{
+    struct run *r;
+    
+    acquire(&kmem.lock);
+    r = kmem.freelist;
+    if (r) {
+        kmem.freelist = r->next;
+    }
+    release(&kmem.lock);
+
+    if (r) {
+        memset((char *)r, 5, SUPERPGSIZE);
+    }
+    return (void *) r;
+}
+
+void 
+superfree(void *pa)
+{
+  struct run *r;
+
+  if(((uint64)pa % SUPERPGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
+    panic("kfree");
+
+  // Fill with junk to catch dangling refs.
+  memset(pa, 1, SUPERPGSIZE);
+
+  r = (struct run*)pa;
+
+  acquire(&kmem.lock);
+  r->next = kmem.freelist;
+  kmem.freelist = r;
+  release(&kmem.lock);
+}
