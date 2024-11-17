@@ -286,11 +286,25 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
-    if((sz = uvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
-      return -1;
+    if (n <= SUPERPGSIZE) {
+      if((sz = uvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
+        return -1;
+      }
+    } else {
+      if((sz = superuvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
+        return -1;
+      }
     }
   } else if(n < 0){
-    sz = uvmdealloc(p->pagetable, sz, sz + n);
+    if (n >= -SUPERPGSIZE) {
+      if((sz = uvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
+        return -1;
+      }
+    } else {
+      if((sz = superuvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
+        return -1;
+      }
+    }
   }
   p->sz = sz;
   return 0;

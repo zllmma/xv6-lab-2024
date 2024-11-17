@@ -262,7 +262,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   pte_t *pte;
   int sz;
 
-  if((va % PGSIZE) != 0 || (va % SUPERPGSIZE) != 0)
+  if( (va % PGSIZE != 0) && (va % SUPERPGSIZE != 0) )
     panic("uvmunmap: not aligned");
 
   if ((va % PGSIZE) == 0) {
@@ -387,7 +387,7 @@ superuvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) {
     memset(mem, 0, sz);
     if(supermappages(pagetable, a, sz, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
       superfree(mem);
-      superuvdemalloc(pagetable, a, oldsz);
+      superuvmdealloc(pagetable, a, oldsz);
       return 0;
     }
   }
@@ -455,8 +455,10 @@ freewalk(pagetable_t pagetable)
 void
 uvmfree(pagetable_t pagetable, uint64 sz)
 {
-  if(sz > 0)
+  if(sz <= SUPERPGSIZE)
     uvmunmap(pagetable, 0, PGROUNDUP(sz)/PGSIZE, 1);
+  else 
+    uvmunmap(pagetable, 0, SUPERPGROUNDUP(sz)/SUPERPGSIZE, 1);
   freewalk(pagetable);
 }
 
@@ -475,21 +477,41 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   char *mem;
   int szinc;
 
-  for(i = 0; i < sz; i += szinc){
-    szinc = PGSIZE;
-    szinc = PGSIZE;
-    if((pte = walk(old, i, 0)) == 0)
-      panic("uvmcopy: pte should exist");
-    if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
-    pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
-      goto err;
+  if (sz <= SUPERPGSIZE) {
+    for(i = 0; i < sz; i += szinc){
+      szinc = PGSIZE;
+      szinc = PGSIZE;
+      if((pte = walk(old, i, 0)) == 0)
+        panic("uvmcopy: pte should exist");
+      if((*pte & PTE_V) == 0)
+        panic("uvmcopy: page not present");
+      pa = PTE2PA(*pte);
+      flags = PTE_FLAGS(*pte);
+      if((mem = kalloc()) == 0)
+        goto err;
+      memmove(mem, (char*)pa, PGSIZE);
+      if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
+        kfree(mem);
+        goto err;
+      }
+    }
+  } else {
+    for(i = 0; i < sz; i += szinc){
+      szinc = SUPERPGSIZE;
+      szinc = SUPERPGSIZE;
+      if((pte = superwalk(old, i, 0)) == 0)
+        panic("uvmcopy: super pte should exist");
+      if((*pte & PTE_V) == 0)
+        panic("uvmcopy: super page not present");
+      pa = SUPERPTE2PA(*pte);
+      flags = PTE_FLAGS(*pte);
+      if((mem = superalloc()) == 0)
+        goto err;
+      memmove(mem, (char*)pa, SUPERPGSIZE);
+      if(supermappages(new, i, SUPERPGSIZE, (uint64)mem, flags) != 0){
+        superfree(mem);
+        goto err;
+      }
     }
   }
   return 0;
