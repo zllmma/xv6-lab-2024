@@ -385,7 +385,11 @@ typedef uint64 *pagetable_t; // 512 PTEs
 // shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)
 
+#define PA2SUPERPTE(pa) ((((uint64)pa) >> 21) << 10)
+
 #define PTE2PA(pte) (((pte) >> 10) << 12)
+
+#define SUPERPTE2PA(pte) (((pte) >> 10) << 21)
 
 #define PTE_FLAGS(pte) ((pte) & 0x3FF)
 
