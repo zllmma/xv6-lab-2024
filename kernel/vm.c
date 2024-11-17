@@ -102,11 +102,6 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
     pte_t *pte = &pagetable[PX(level, va)];
     if(*pte & PTE_V) {
       pagetable = (pagetable_t)PTE2PA(*pte);
-#ifdef LAB_PGTBL
-      if(PTE_LEAF(*pte)) {
-        return pte;
-      }
-#endif
     } else {
       if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
         return 0;
@@ -115,6 +110,43 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
     }
   }
   return &pagetable[PX(0, va)];
+}
+
+pte_t *
+superwalk(pagetable_t pagetable, uint64 va, int alloc)
+{
+  if(va >= MAXVA)
+    panic("walk");
+
+  pte_t *pte2; // L2 PTE
+  pte_t *pte1; // L1 PTE
+
+  // handling pte2
+  pte2 = &pagetable[PX(2, va)];
+  if(*pte2 & PTE_V) {
+    // jump to the L1 page table
+    pagetable = (pagetable_t)PTE2PA(*pte2);
+  } else {
+    // alloc one L1 page table
+    if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
+      return 0;
+    memset(pagetable, 0, PGSIZE);
+    *pte2 = PA2PTE(pagetable) | PTE_V;
+  }
+
+  // handling pte1
+  pte1 = &pagetable[PX(1, va)];
+  if (*pte1 & PTE_V) {
+    return pte1;
+  } else {
+    // alloc one super page table
+    if ( !alloc || (pagetable = (pde_t*) superalloc()) == 0 ) 
+        return 0;
+
+      memset(pagetable, 0, SUPERPGSIZE);
+      *pte1 = PA2SUPERPTE(pagetable) | PTE_V;
+      return pte1;
+  }
 }
 
 // Look up a virtual address, return the physical address,
@@ -179,6 +211,39 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
+    if(a == last)
+      break;
+    a += PGSIZE;
+    pa += PGSIZE;
+  }
+  return 0;
+}
+
+// Create super PTEs for virtual addresses starting at va that refer to physical addresses starting at pa.
+// return 0 for success, -1 on allocation failure
+int 
+supermappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm) 
+{
+  uint64 a, last;
+  pte_t *pte;
+
+  if((va % SUPERPGSIZE) != 0)
+    panic("supermappages: va not aligned");
+
+  if((size % SUPERPGSIZE) != 0)
+    panic("supermappages: size not aligned");
+
+  if(size == 0)
+    panic("supermappages: size");
+  
+  a = va;
+  last = va + size - SUPERPGSIZE;
+  for(;;){
+    if((pte = superwalk(pagetable, a, 1)) == 0)
+      return -1;
+    if(*pte & PTE_V)
+      panic("supermappages: remap");
+    *pte = PA2SUPERPTE(pa) | perm | PTE_V;
     if(a == last)
       break;
     a += PGSIZE;
@@ -268,9 +333,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
       uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
-#ifndef LAB_SYSCALL
     memset(mem, 0, sz);
-#endif
     if(mappages(pagetable, a, sz, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
       kfree(mem);
       uvmdealloc(pagetable, a, oldsz);
