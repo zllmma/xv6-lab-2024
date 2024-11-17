@@ -90,7 +90,13 @@ superalloc(void)
     acquire(&kmem.lock);
     r = kmem.freelist;
     if (r) {
-        for (int i = 0; i < 512; i++) { r = r->next; }
+        for (int i = 0; i < 512; i++) {
+            if (r == 0) {
+                release(&kmem.lock);
+                return 0;
+            } 
+            r = r->next; 
+        }
         kmem.freelist = r;
     }
     release(&kmem.lock);
