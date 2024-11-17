@@ -343,6 +343,35 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
   return newsz;
 }
 
+// Allocate super PTEs and physical memory to grow process from oldsz to
+// newsz, which need not be page aligned.  Returns new size or 0 on error.
+uint64
+superuvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) {
+  char *mem;
+  uint64 a;
+  int sz;
+
+  if(newsz < oldsz)
+    return oldsz;
+
+  oldsz = SUPERPGROUNDUP(oldsz);
+  for(a = oldsz; a < newsz; a += sz){
+    sz = SUPERPGSIZE;
+    mem = superalloc();
+    if(mem == 0){
+      superuvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }
+    memset(mem, 0, sz);
+    if(supermappages(pagetable, a, sz, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
+      superfree(mem);
+      superuvdemalloc(pagetable, a, oldsz);
+      return 0;
+    }
+  }
+  return newsz;
+}
+
 // Deallocate user pages to bring the process size from oldsz to
 // newsz.  oldsz and newsz need not be page-aligned, nor does newsz
 // need to be less than oldsz.  oldsz can be larger than the actual
@@ -360,6 +389,24 @@ uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
 
   return newsz;
 }
+
+// Deallocate user super pages to bring the process size from oldsz to
+// newsz. oldsz and newsz need not be page-aligned, nor does newsz
+// need to be less than oldsz.  oldsz can be larger than the actual
+// process size.  Returns the new process size.
+uint64
+superuvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
+{
+  if(newsz >= oldsz)
+    return oldsz;
+
+  if(SUPERPGROUNDUP(newsz) < SUPERPGROUNDUP(oldsz)){
+    int npages = (SUPERPGROUNDUP(oldsz) - SUPERPGROUNDUP(newsz)) / SUPERPGSIZE;
+    uvmunmap(pagetable, SUPERPGROUNDUP(newsz), npages, 1);
+  }
+
+  return newsz;
+} 
 
 // Recursively free page-table pages.
 // All leaf mappings must already have been removed.
