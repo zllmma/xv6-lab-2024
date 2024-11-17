@@ -90,7 +90,8 @@ superalloc(void)
     acquire(&kmem.lock);
     r = kmem.freelist;
     if (r) {
-        kmem.freelist = r->next;
+        for (int i = 0; i < 512; i++) { r = r->next; }
+        kmem.freelist = r;
     }
     release(&kmem.lock);
 
@@ -100,6 +101,7 @@ superalloc(void)
     return (void *) r;
 }
 
+// free the superpage of physical memory pointed at pa, which is alligned to SUPERPGSIZE 
 void 
 superfree(void *pa)
 {
@@ -114,6 +116,7 @@ superfree(void *pa)
   r = (struct run*)pa;
 
   acquire(&kmem.lock);
+  for (int i = 0; i < 512; i++) { r = r->next; }
   r->next = kmem.freelist;
   kmem.freelist = r;
   release(&kmem.lock);
