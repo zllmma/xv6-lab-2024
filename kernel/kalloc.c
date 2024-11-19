@@ -8,6 +8,7 @@
 #include "spinlock.h"
 #include "riscv.h"
 #include "defs.h"
+#define NULL 0
 
 void freerange(void *pa_start, void *pa_end);
 
@@ -81,32 +82,45 @@ kalloc(void)
   return (void*)r;
 }
 
-// alloc one 2MiByte super page of physical memory
-void *
-superalloc(void)
-{
-    struct run *r;
+void* superalloc() {
     
+    struct run *r;
     acquire(&kmem.lock);
     r = kmem.freelist;
+    struct run *superpage = kmem.freelist;
 
-    // while ( (uint64)r % SUPERPGSIZE != 0 ) {
-    //     r = r->next;
-    // }
+    if (!r) {
+        release(&kmem.lock);
+        return NULL;
+    }
 
-    if (r) {
-        for (int i = 0; i < 512; i++) {
-            r = r->next; 
-        }
-        kmem.freelist = r;
+    while ( (uint64)r % SUPERPGSIZE != 0 ) {
+        //printf("r = %p\n", (void *) r);
+        r = r->next;
+    }
+
+    superpage = r;
+    printf("start of superpage: %p\n", (void *)superpage);
+
+    for (int i = 1; i <= 512; i++) {
+        printf("r = %p, r->next = %p, ∆r = %ld Bytes\n", (void *) r, (void *) r->next, (uint64)r->next - (uint64)r);
+        r = r->next;
+    }
+
+    printf("end of superpage: %p, the size of superpage is %ld Bytes\n", (void *)r, -(uint64)r + (uint64)superpage);
+    kmem.freelist = r;
+    for (uint64 i = 0; i < SUPERPGSIZE; i++) {
+
+        if (i % PGSIZE == 0)
+          printf("addr to set = %p, %ld pages writed, i = %ld\n", (char *)superpage + i, i / PGSIZE, i);
+        
+        *( (char *)(superpage) + i ) = '5';
     }
     release(&kmem.lock);
-
-    if (r) {
-        memset((char *)r, 5, SUPERPGSIZE);
-    }
-    return (void *) r;
+    return (void *)superpage;
 }
+
+
 
 // free the superpage of physical memory pointed at pa, which is alligned to SUPERPGSIZE 
 void 

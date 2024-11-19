@@ -1,12 +1,11 @@
 #include "types.h"
-
 void*
-memset(void *dst, int c, uint64 n)
+memset(void *dst, int c, int n)
 {
   char *cdst = (char *) dst;
-  uint64 i;
+  int i;
   for(i = 0; i < n; i++){
-    cdst[i] = c;
+    *(cdst + i) = c;
   }
   return dst;
 }
