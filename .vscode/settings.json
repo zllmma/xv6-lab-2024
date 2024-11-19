@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "*.csv": "csv",
-        "*.py": "python",
-        "riscv.h": "c",
-        "memlayout.h": "c"
-    }
-}
