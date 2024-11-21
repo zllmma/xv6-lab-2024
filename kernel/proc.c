@@ -126,6 +126,7 @@ found:
   p->state = USED;
   p->alarmhandler = (void (*)(void)) 0;
   p->alarminterval = 0;
+  p->inhandle = 0;
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
