@@ -22,6 +22,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int sigalarm(int ticks, void (*handler)(void));
+int sigreturn(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -42,5 +44,3 @@ void *memcpy(void *, const void *, uint);
 void* malloc(uint);
 void free(void*);
 
-int sigalarm(int ticks, void (*handler)());
-int sigreturn(void);
