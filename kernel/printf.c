@@ -176,3 +176,8 @@ printfinit(void)
   initlock(&pr.lock, "pr");
   pr.locking = 1;
 }
+
+void backtrace() 
+{
+    return;
+}
