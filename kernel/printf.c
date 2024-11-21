@@ -166,6 +166,7 @@ panic(char *s)
   printf("panic: ");
   printf("%s\n", s);
   panicked = 1; // freeze uart output from other CPUs
+  backtrace();
   for(;;)
     ;
 }
@@ -178,7 +179,8 @@ printfinit(void)
 }
 
 void bt_helper(uint64 fp, uint64 up, uint64 down) {
-  if (fp > up || fp < down) {
+  //printf("fp = %p\n", (void *) fp);
+  if (fp >= up || fp <= down) {
     return;
   }
   uint64 ra = * (uint64 *) (fp - 8);
@@ -190,6 +192,6 @@ void backtrace(void)
 {
     printf("backtrace:\n");
     uint64 fp = r_fp();
-    // printf("up = %p, down = %p\n", (void *)PGROUNDUP(fp), (void *)PGROUNDDOWN(fp));
+    //printf("up = %p, down = %p\n", (void *)PGROUNDUP(fp), (void *)PGROUNDDOWN(fp));
     bt_helper(fp, PGROUNDUP(fp), PGROUNDDOWN(fp));
 }
