@@ -177,7 +177,19 @@ printfinit(void)
   pr.locking = 1;
 }
 
-void backtrace() 
-{
+void bt_helper(uint64 fp, uint64 up, uint64 down) {
+  if (fp > up || fp < down) {
     return;
+  }
+  uint64 ra = * (uint64 *) (fp - 8);
+  printf("%p\n", (void *) ra);
+  bt_helper(* (uint64 *) (fp - 16), up, down);
+}
+
+void backtrace(void) 
+{
+    printf("backtrace:\n");
+    uint64 fp = r_fp();
+    // printf("up = %p, down = %p\n", (void *)PGROUNDUP(fp), (void *)PGROUNDDOWN(fp));
+    bt_helper(fp, PGROUNDUP(fp), PGROUNDDOWN(fp));
 }
