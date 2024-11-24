@@ -160,7 +160,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   for(;;){
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
-    if(*pte & PTE_V)
+    if(*pte & PTE_V && !(*pte & PTE_COW))
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
@@ -328,6 +328,8 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     
     // clear the PTE_W in both PTES
+    // set the cow flag bit
+    *pte |= PTE_COW;
     *pte &= (~PTE_W);
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
