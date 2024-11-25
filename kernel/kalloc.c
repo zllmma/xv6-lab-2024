@@ -83,9 +83,9 @@ kfree(void *pa)
     r->next = kmem.freelist;
     kmem.freelist = r;
     release(&kmem.lock);
-  }  else {
-    printf("ref to mem %p = %d\n", (void *) pa, refcounts[WHICHPG((uint64) pa)]);
-    panic("have ref unfreed");
+  } else {
+    // printf("ref to mem %p = %d\n", (void *) pa, refcounts[WHICHPG((uint64) pa)]);
+    // panic("have ref unfreed");
   }
   release(&ref_lock);
 }
@@ -107,7 +107,9 @@ kalloc(void)
   if(r) {
     memset((char*)r, 5, PGSIZE); // fill with junk
     // Set the reference count to 1
+    acquire(&ref_lock);
     refcounts[WHICHPG((uint64)r)] = 1;
+    release(&ref_lock);
   }
   return (void*)r;
 }
@@ -119,8 +121,10 @@ cowallloc(uint64 pa) {
         release(&ref_lock);
         return pa;
     }
-
+    release(&ref_lock);
     uint64 new = (uint64) kalloc();
+    
+    acquire(&ref_lock);
     if (new == 0) {
         release(&ref_lock);
         panic("oom!");

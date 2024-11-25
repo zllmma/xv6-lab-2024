@@ -193,12 +193,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: not mapped");
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
-    uint64 pa = PTE2PA(*pte);
-    acquire(&ref_lock);
-    if (refcounts[WHICHPG((uint64) pa)] > 1) {
-      refcounts[WHICHPG((uint64) pa)]--;
-    }
-    release(&ref_lock);
+
     if(do_free){
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
@@ -336,8 +331,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     
-    // clear the PTE_W in both PTES
-    // set the cow flag bit
     if (*pte & PTE_W) {
       *pte &= ~PTE_W;
       *pte |= PTE_COW;
@@ -353,7 +346,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   return 0;
 
  err:
-  // do not free memory, beacues we did't allocate
   uvmunmap(new, 0, i / PGSIZE, 1);
   return -1;
 }
@@ -484,16 +476,16 @@ iscowpage(uint64 va)
 
   if (pte == 0) return 0;
 
-  if ( (va < p->sz) && (*pte & PTE_COW) && (*pte & PTE_V) ) return 1;
+  if ( (va < p->sz) && (*pte & PTE_V) && (*pte & PTE_COW) ) return 1;
 
-  return 0;
+  else return 0;
 }
 
 void
 cowcopy(uint64 va)
 {
   struct proc *p = myproc();
-  va = PGROUNDDOWN(va);
+  va = PGROUNDDOWN((uint64) va);
   pte_t *pte = walk(p->pagetable, va, 0);
   uint64 pa = PTE2PA(*pte);
 

@@ -69,7 +69,7 @@ usertrap(void)
   } else if( (r_scause() == 15 || r_scause() == 13) && iscowpage(r_stval()) ) {
     uint64 va = r_stval();
     // for debug
-    printf("page fault at %p\n", (void *)va);
+    // printf("page fault at %p\n", (void *)va);
     // printf("PTE for va %lx: %lx\n", va, *walk(p->pagetable, va, 0));
     cowcopy(va);
   } else {
