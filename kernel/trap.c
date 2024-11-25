@@ -37,7 +37,6 @@ void
 usertrap(void)
 {
   int which_dev = 0;
-
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
 
@@ -49,7 +48,7 @@ usertrap(void)
   
   // save user program counter.
   p->trapframe->epc = r_sepc();
-  
+  // printf("in a usertrap, scause = %d\n", (int)r_scause());
   if(r_scause() == 8){
     // system call
 
@@ -67,35 +66,15 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else if(r_scause() == 15) {
+  } else if( (r_scause() == 15 || r_scause() == 13) && iscowpage(r_stval()) ) {
     uint64 va = r_stval();
     // for debug
-    printf("page fault @%p\n", (void *)va);
-    pte_t *pte;
-    uint64 pa;
-    if ( (pte = walk(p->pagetable, va, 0)) == 0 ) {
-      panic("page fault: pte should exist");
-    }
-    pa = PTE2PA(*pte);
-    uint flag = PTE_FLAGS(*pte);
-    if ( !(flag & PTE_COW) ) { // not an COW page and originally read-only
-      printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
-      printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
-      setkilled(p);
-    } else {
-      uint64 mem = (uint64) kalloc();
-      if (mem == 0) { setkilled(p); }
-      else {
-        memmove((void *)mem, (const void *)pa, PGSIZE);
-        va = PGROUNDDOWN(va);
-        if (mappages(p->pagetable, va, PGSIZE, mem, PTE_R | PTE_W | PTE_U) != 0) {
-          kfree((void *) mem);
-          setkilled(p);
-        }
-      }
-    }
-
+    printf("page fault at %p\n", (void *)va);
+    // printf("PTE for va %lx: %lx\n", va, *walk(p->pagetable, va, 0));
+    cowcopy(va);
   } else {
+    uint64 va = r_stval();
+    printf("PTE for va %lx: %lx\n", va, *walk(p->pagetable, va, 0));
     printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
     printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
     setkilled(p);
@@ -162,6 +141,7 @@ usertrapret(void)
 void 
 kerneltrap()
 {
+  // printf("in a kernel trap, scause = %d\n", (int)r_scause());
   int which_dev = 0;
   uint64 sepc = r_sepc();
   uint64 sstatus = r_sstatus();

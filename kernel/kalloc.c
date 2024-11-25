@@ -25,10 +25,10 @@ struct {
   struct run *freelist;
 } kmem;
 
-int refcounts[NPAGES] = {0};
+int refcounts[(PHYSTOP - KERNBASE) / PGSIZE];
 
 uint64 WHICHPG(uint64 pa) {
-  return (uint64)pa / PGSIZE;
+  return ((uint64)pa - KERNBASE) / PGSIZE;
 } 
 
 void ref_up(uint64 pa) {
@@ -72,11 +72,12 @@ kfree(void *pa)
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
-  // Fill with junk to catch dangling refs.
-  memset(pa, 1, PGSIZE);
+  
   acquire(&ref_lock);
   refcounts[WHICHPG((uint64) pa)]--;
   if (refcounts[WHICHPG((uint64) pa)] <= 0) {
+    // Fill with junk to catch dangling refs.
+    memset(pa, 1, PGSIZE);
     r = (struct run*)pa;
     acquire(&kmem.lock);
     r->next = kmem.freelist;
@@ -109,4 +110,25 @@ kalloc(void)
     refcounts[WHICHPG((uint64)r)] = 1;
   }
   return (void*)r;
+}
+
+uint64
+cowallloc(uint64 pa) {
+    acquire(&ref_lock);
+    if (refcounts[WHICHPG(pa)] <= 1) {
+        release(&ref_lock);
+        return pa;
+    }
+
+    uint64 new = (uint64) kalloc();
+    if (new == 0) {
+        release(&ref_lock);
+        panic("oom!");
+        return 0;
+    }   
+
+    memmove((void *) new, (void *)pa, PGSIZE);
+    refcounts[WHICHPG(pa)]--;
+    release(&ref_lock);
+    return new;
 }
