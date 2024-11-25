@@ -74,16 +74,19 @@ kfree(void *pa)
     panic("kfree");
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
-  ref_down((uint64)pa);
-  if (refcounts[WHICHPG((uint64) pa)] > 0) {
-    printf("ref to %p = %d\n", pa, refcounts[WHICHPG((uint64) pa)]);
+  acquire(&ref_lock);
+  refcounts[WHICHPG((uint64) pa)]--;
+  if (refcounts[WHICHPG((uint64) pa)] <= 0) {
+    r = (struct run*)pa;
+    acquire(&kmem.lock);
+    r->next = kmem.freelist;
+    kmem.freelist = r;
+    release(&kmem.lock);
+  }  else {
+    printf("ref to mem %p = %d\n", (void *) pa, refcounts[WHICHPG((uint64) pa)]);
     panic("have ref unfreed");
   }
-  r = (struct run*)pa;
-  acquire(&kmem.lock);
-  r->next = kmem.freelist;
-  kmem.freelist = r;
-  release(&kmem.lock);
+  release(&ref_lock);
 }
 
 // Allocate one 4096-byte page of physical memory.
