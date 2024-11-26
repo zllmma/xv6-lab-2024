@@ -377,17 +377,21 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
       return -1;
     }
     pte_t *pte = walk(pagetable, va0, 0);
-    pa0 = PTE2PA(*pte);
-    if ((*pte & PTE_V) == 0 || (*pte & PTE_U) == 0 || pte == 0) {
+    pa0 = walkaddr(pagetable, va0);
+    
+    if (pte == 0) {
+      return -1;
+    }
+    
+    if ( (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0 ) {
       return -1;
     }
     
     if (iscowpage(va0)) {
       cowcopy(va0);
       pa0 = walkaddr(pagetable, va0);
-      if (pa0 == 0) {
-        return -1;
-      }
+    } else if ( (*pte & PTE_W) == 0 ) { 
+      return -1;
     }
 
     n = PGSIZE - (dstva - va0);
@@ -476,7 +480,7 @@ iscowpage(uint64 va)
   struct proc *p = myproc();
   va = PGROUNDDOWN(va);
 
-  if (va > MAXVA) return 0;
+  if (va >= MAXVA) return 0;
 
   pte_t *pte = walk(p->pagetable, va, 0);
 
