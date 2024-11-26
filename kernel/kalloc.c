@@ -127,7 +127,6 @@ cowallloc(uint64 pa) {
     acquire(&ref_lock);
     if (new == 0) {
         release(&ref_lock);
-        panic("oom!");
         return 0;
     }   
 

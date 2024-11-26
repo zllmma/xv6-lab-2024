@@ -373,15 +373,21 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
-    
-    if (pa0 == 0) {
+    if (va0 >= MAXVA) {
+      return -1;
+    }
+    pte_t *pte = walk(pagetable, va0, 0);
+    pa0 = PTE2PA(*pte);
+    if ((*pte & PTE_V) == 0 || (*pte & PTE_U) == 0 || pte == 0) {
       return -1;
     }
     
     if (iscowpage(va0)) {
       cowcopy(va0);
       pa0 = walkaddr(pagetable, va0);
+      if (pa0 == 0) {
+        return -1;
+      }
     }
 
     n = PGSIZE - (dstva - va0);
@@ -491,14 +497,13 @@ cowcopy(uint64 va)
 
   uint64 new = cowallloc(pa);
   if (new == 0) {
-    panic("cowallloc error!");
-    exit(-1);
+    setkilled(p);
   }
 
   uint64 flags = (PTE_FLAGS(*pte) | PTE_W) & (~PTE_COW);
   uvmunmap(p->pagetable, va, 1, 0);
   if (mappages(p->pagetable, va, PGSIZE, new, flags) == -1) {
     kfree((void *) new);
-    panic("cow mappages failed!");
+    setkilled(p);
   }
 }
